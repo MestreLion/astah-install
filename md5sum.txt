@@ -1,0 +1,9 @@
+6.9	deb	8238ba6b2f270ea4c6264350e35c94a9	http://cdn.astah.net/downloads/astah-community_6.9.0.b4c6e9-0_all.deb
+6.9	zip	c3862bc3902506a11d577aa883616f9d	http://cdn.astah.net/downloads/astah-community-6_9_0-b4c6e9.zip
+7.0	deb	8c28fdd7466c98a1d5e5ba86dc62fe20	http://cdn.astah.net/downloads/astah-community_7.0.0.846701-0_all.deb
+
+# There are 2 versions of 7.0 ZIP, with identical filenames and content, but distinct dates and md5sums:
+# One downloaded from http://cdn.astah.net/downloads/, the other from the restricted area http://members.change-vision.com/files/_<hash>/astah_community/7_0_0/
+# md5sums are published only for the restricted area files, but as it requires a web login, here we use the public one with a pre-calculated md5sum
+7.0	zip	25ca37d8731c53397e910894340cc625	file://astah-community-7_0_0-846701.zip
+7.0	zip	24ac9f33bf45a2a592d3f7571437b031	http://cdn.astah.net/downloads/astah-community-7_0_0-846701.zip

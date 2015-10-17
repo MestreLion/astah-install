@@ -1,0 +1,251 @@
+#!/bin/bash -ue
+#
+# install - Astah Community installer for Debian/Ubuntu/Mint
+#
+#    Copyright (C) 2015 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program. If not, see <http://www.gnu.org/licenses/gpl.html>
+
+# TODO:
+# - EULA
+# - Uninstall
+# - command-line exec
+
+# Default options -------------------------------------------------------------
+
+# Install root path
+rootdir="$HOME"/.local/opt/astah
+
+# Download path
+download="$rootdir"/download
+
+# Archive version
+version=6.9
+
+# Top-level dir of the archive, also extraction basename relative to $rootdir
+archivetoplevel=astah_community
+
+# Desktop files base dir (relative to $rootdir)
+desktopbase=xdg
+
+# Uninstall flag
+uninstall=0
+
+# Other options
+verbose=1
+force=0
+yes=0
+
+
+# Constants and other globals -------------------------------------------------
+
+myname=${0##*/}
+mydir=$(dirname "$(readlink -f "$0")")
+checksumfile="$mydir"/md5sum.txt
+icondir="$mydir"/icons
+
+dir="$rootdir"/"$archivetoplevel"
+exec="$rootdir"/astah-community
+
+xdgdir="$rootdir"/"$desktopbase"
+mimefile="$xdgdir"/astah-mime.xml
+deskfile="$xdgdir"/astah-community.desktop
+archive=""
+
+# ---
+
+uninstaller=0
+
+
+
+# Helper functions ------------------------------------------------------------
+
+bold()    { tput bold; printf '%s' "$@"; tput sgr0; }
+red()     { tput setaf 1; bold "$@"; }
+green()   { tput setaf 2; bold "$@"; }
+
+fatal()   { (($#)) && echo "$(red "$@")" >&2 || :; exit 1; }
+message() { ((verbose)) && echo "$(green '* ' "$@")" || :; return; }
+argerr()  { echo "$myname: erro${1:+: $(printf '%s' "$@")}" >&2 ; usage 1 ; }
+invalid() { argerr "invalid option: $1" ; }
+missing() { argerr "missing operand${1:+ em '$1'}." ; }
+integer() { [[ "${1:-}" != *[!0-9]* ]] ||
+            argerr "'$1' is not a valid positive integer."; }
+yesno()   { if (($1)); then green "Yes"; else red "No"; fi; }
+linefeed(){ ((verbose)) && echo; }
+cmdpath() { type -P "$1"; }
+exists()   { type "$1" >/dev/null 2>&1; }
+
+ppath()   { printf '%q' "$@"; }
+
+download_archive() {
+	local requestedversion="$1"
+	local requestedtype="$2"
+	local name="Astah Community $requestedversion ($requestedtype)"
+	local fileversion
+	local filetype
+	local cksum
+	local url
+	local basefile
+	local path
+	local q=()
+
+	if !((verbose)); then
+		q+=(--quiet)
+	fi
+
+	while IFS="	" read -r -s fileversion filetype cksum url; do
+		if [[ "$url" == "file://"* ]] ||
+		 ! [[ "$fileversion" == "$requestedversion" ]] ||
+		 ! [[ "$filetype" == "$requestedtype" ]]
+		then
+			continue
+		fi
+
+		basefile="${url##*/}"
+		path="$download"/"$basefile"
+		message "Downloading $name from $url"
+		mkdir -p "$download"
+		wget "${q[@]:+${q[@]}}" -P "$download" -N "$url" || true
+
+		message "Checking file integrity"
+		md5sum "${q[@]:+${q[@]}}" --check - <<< "$cksum  $path" ||
+		fatal "Error verifying $path"
+
+		# Found and downloaded. Set "return value" global
+		archive=$path
+		break
+	done < <(grep -v '^#' "$checksumfile" | LC_ALL=C sort -r -f -k 4)
+
+	if [[ -z "$archive" ]]; then
+		fatal "Unable to get $name!"
+	fi
+}
+
+extract_icons() {
+	local source="$1"
+	local path="$2"
+	local icofile="$3"
+	local prefix="$4"
+	local title=$(basename "${icofile%.*}")
+	local i w h b
+	local args
+
+	mkdir -p "$path"
+
+	if ! exists icotool; then
+		message "Copying icons for '$prefix' from $source"
+		cp -- "$source"/"$prefix"-*.png "$path" ||
+			fatal "'icoutils' package required to extract icons" \
+				" is not installed, and" \
+				" there are no pre-extracted icons at '$source'"
+		return
+	fi
+
+	message "Extracting icons for '$prefix' from $icofile"
+
+	# icotool has a bug where it can't extract some icons by index
+	# So we extract them all, list them, infer their extracted filenames
+	# and rename to the proper name.
+	# See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=747435
+	icotool --extract --icon --output="$path" -- "$icofile"
+
+	# 'convert' can't be used as it considers astah-doc.ico to be corrupted
+
+	while read args && set -- $args; do
+		while (($#)); do
+			case "$1" in
+			--index=*)     i="${1#*=}";;
+			--width=*)     w="${1#*=}";;
+			--height=*)    h="${1#*=}";;
+			--bit-depth=*) b="${1#*=}";;
+			esac
+			shift
+		done
+		mv -- "$path"/"$title"_"$i"_"$w"x"$h"x"$b".png \
+			"$path"/"$prefix"-"$w".png
+	done < <(icotool --list --icon -- "$icofile")
+}
+
+install_icons() {
+	local path="$1"
+	local prefix="$2"
+	local context="${3:-apps}"
+	local icon title size
+	for icon in "$xdgdir"/"$prefix"-*.png; do
+		title=${icon%.*}
+		size=${title##*-}
+		xdg-icon-resource install --noupdate --novendor \
+			--context "$context" --size "$size" "$icon" "$prefix"
+	done
+}
+
+# Main procedures and logic ---------------------------------------------------
+
+mkdir -p "$rootdir"
+download_archive "$version" "zip"
+unzip -quo -d "$rootdir" -- "$archive"
+
+
+cat > "$exec" <<-_EOF_
+	#!/bin/sh
+
+	JAVA_OPTS="-Xms16m -Xmx384m"
+	#JAVA_OPTS="\$JAVA_OPTS -DrootLevel=DEBUG"
+
+	java \$JAVA_OPTS -jar $(ppath "$dir/astah-community.jar") -- "\$@"
+_EOF_
+chmod +x "$exec"
+
+extract_icons "$icondir" "$xdgdir" "$dir"/astah.ico     'astah-community'
+extract_icons "$icondir" "$xdgdir" "$dir"/astah-doc.ico 'application-x-astah'
+
+install_icons "$xdgdir" 'astah-community'     apps
+install_icons "$xdgdir" 'application-x-astah' mimetypes
+xdg-icon-resource forceupdate
+
+cat > "$mimefile" <<-_EOF_
+	<?xml version="1.0" encoding="UTF-8"?>
+	<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+	 <mime-type type="application/x-astah">
+	  <comment>astah* document</comment>
+	  <comment xml:lang="ja">astah* ドキュメント</comment>
+	  <glob pattern="*.asta"/>
+	  <glob pattern="*.jude"/>
+	  <glob pattern="*.juth"/>
+	 </mime-type>
+	</mime-info>
+_EOF_
+xdg-mime install --novendor "$mimefile"
+
+message "Installing menu entries"
+cat > "$deskfile" <<-_EOF_
+	[Desktop Entry]
+	Version=1.0
+	Name=astah* community
+	Comment=Lightweight, easy-to-use, and free UML2.x modeler
+	Comment[ja]=UMLの学習に最適な個人向けツールです
+	Exec=$(ppath "$exec") %F
+	Icon=astah-community
+	Terminal=false
+	Type=Application
+	Categories=Development;Utility;
+	MimeType=application/x-astah;
+_EOF_
+xdg-desktop-menu install --novendor "$deskfile"
+
+# Remove windows files
+rm -f "$dir"/{*.{exe,ini,bat},lib/*.dll}
+
+message "Done!"
