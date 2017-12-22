@@ -25,48 +25,31 @@
 # Default options -------------------------------------------------------------
 
 # Install root path
-rootdir="$HOME"/.local/opt/astah
-
-# Download path
-download="$rootdir"/download
+rootdir=$HOME/.local/opt/astah
 
 # Archive version
-version=6.9
+version=7.2
 
 # Top-level dir of the archive, also extraction basename relative to $rootdir
 archivetoplevel=astah_community
 
+# Download base dir (relative to $rootdir)
+download=download
+
 # Desktop files base dir (relative to $rootdir)
 desktopbase=xdg
 
-# Uninstall flag
-uninstall=0
-
 # Other options
 verbose=1
-force=0
-yes=0
 
 
 # Constants and other globals -------------------------------------------------
 
 myname=${0##*/}
 mydir=$(dirname "$(readlink -f "$0")")
-checksumfile="$mydir"/md5sum.txt
-icondir="$mydir"/icons
-
-dir="$rootdir"/"$archivetoplevel"
-exec="$rootdir"/astah-community
-
-xdgdir="$rootdir"/"$desktopbase"
-mimefile="$xdgdir"/astah-mime.xml
-deskfile="$xdgdir"/astah-community.desktop
+checksumfile=$mydir/md5sum.txt
+icondir=$mydir/icons
 archive=""
-
-# ---
-
-uninstaller=0
-
 
 
 # Helper functions ------------------------------------------------------------
@@ -80,12 +63,7 @@ message() { ((verbose)) && echo "$(green '* ' "$@")" || :; return; }
 argerr()  { echo "$myname: erro${1:+: $(printf '%s' "$@")}" >&2 ; usage 1 ; }
 invalid() { argerr "invalid option: $1" ; }
 missing() { argerr "missing operand${1:+ em '$1'}." ; }
-integer() { [[ "${1:-}" != *[!0-9]* ]] ||
-            argerr "'$1' is not a valid positive integer."; }
-yesno()   { if (($1)); then green "Yes"; else red "No"; fi; }
-linefeed(){ ((verbose)) && echo; }
-cmdpath() { type -P "$1"; }
-exists()   { type "$1" >/dev/null 2>&1; }
+exists()  { type "$1" >/dev/null 2>&1; }
 
 ppath()   { printf '%q' "$@"; }
 
@@ -114,10 +92,10 @@ download_archive() {
 		fi
 
 		basefile="${url##*/}"
-		path="$download"/"$basefile"
+		path="$downdir"/"$basefile"
 		message "Downloading $name from $url"
-		mkdir -p "$download"
-		wget "${q[@]:+${q[@]}}" -P "$download" -N "$url" || true
+		mkdir -p "$downdir"
+		wget "${q[@]:+${q[@]}}" -P "$downdir" -N "$url" || true
 
 		message "Checking file integrity"
 		md5sum "${q[@]:+${q[@]}}" --check - <<< "$cksum  $path" ||
@@ -190,6 +168,17 @@ install_icons() {
 			--context "$context" --size "$size" "$icon" "$prefix"
 	done
 }
+
+# Derived vars ----------------------------------------------------------------
+
+dir=$rootdir/$archivetoplevel
+exec=$rootdir/astah-community
+
+xdgdir=$rootdir/$desktopbase
+downdir=$rootdir/$download
+mimefile=$xdgdir/astah-mime.xml
+deskfile=$xdgdir/astah-community.desktop
+
 
 # Main procedures and logic ---------------------------------------------------
 
