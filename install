@@ -67,6 +67,7 @@ argerr()  { echo "$myname: erro${1:+: $(printf '%s' "$@")}" >&2 ; usage 1 ; }
 invalid() { argerr "invalid option: $1" ; }
 missing() { argerr "missing operand${1:+ em '$1'}." ; }
 exists()  { type "$1" >/dev/null 2>&1; }
+quit()    { message "Goodbye!" ; exit; }
 
 ppath()   { printf '%q' "$@"; }
 
@@ -262,6 +263,35 @@ xdgdir=$rootdir/$desktopbase
 downdir=$rootdir/$download
 mimefile=$xdgdir/astah-mime.xml
 deskfile=$xdgdir/astah-community.desktop
+
+
+# Summary and confirmation ----------------------------------------------------
+
+((verbose)) && {
+	printf "\n${appname^^} INSTALLER\n\n"
+	echo "Install details:"
+	echo "App name     = $appname"
+	echo "Version      = $version"
+	echo "Install dir  = $rootdir"
+	echo "To change these options, see $myname --help"
+	read -r -p "Confirm? (YES,no): " confirm
+	case "$confirm" in
+	[Nn]*) quit;;
+	esac
+	echo ""
+}
+
+[[ -e "$rootdir" ]] && {
+	msg="Install directory '$rootdir' exists. Remove before proceding?"
+	read -r -p "$msg (yes,NO): " confirm
+	case "$confirm" in
+	[Yy]*)
+		message "removing $rootdir"
+		rm -rf "$rootdir" || fatal "could not remove $rootdir"
+	;;
+	*) quit;;
+	esac
+}
 
 
 # Main procedures and logic ---------------------------------------------------
