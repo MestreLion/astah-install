@@ -313,13 +313,13 @@ deskfile=$xdgdir/astah-community.desktop
 	echo ""
 }
 
-[[ -e "$rootdir" ]] && {
-	msg="Install directory '$rootdir' exists. Remove before proceding?"
+[[ -e "$dir" ]] && {
+	msg="Extraction directory '$dir' exists. Remove before proceding?"
 	if ((yes)); then confirm=Y; else read -r -p "$msg (yes,NO): " confirm; fi
 	case "$confirm" in
 	[Yy]*)
-		message "removing $rootdir"
-		rm -rf "$rootdir" || fatal "could not remove $rootdir"
+		message "removing $dir"
+		rm -rf "$dir" || fatal "could not remove $dir"
 	;;
 	*) quit;;
 	esac
@@ -328,7 +328,7 @@ deskfile=$xdgdir/astah-community.desktop
 
 # Main procedures and logic ---------------------------------------------------
 
-mkdir -p "$rootdir"
+mkdir -p -- "$rootdir"
 if [[ -z "$archive" ]]; then download_archive "$version" "zip"; fi
 unzip -quo -d "$rootdir" -- "$archive"
 
@@ -386,6 +386,6 @@ _EOF_
 xdg-desktop-menu install --novendor "$deskfile"
 
 # Remove windows files
-rm -f "$dir"/{*.{exe,ini,bat},lib/*.dll}
+rm -f -- "$dir"/{*.{exe,ini,bat},lib/*.dll}
 
 message "Done!"
