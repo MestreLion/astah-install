@@ -24,6 +24,9 @@
 
 # Default options -------------------------------------------------------------
 
+# App name in menus, Launchers, etc (inside .desktop file)
+appname='Astah* Community'
+
 # Install root path
 rootdir=$HOME/.local/opt/astah
 
@@ -222,7 +225,7 @@ message "Installing menu entries"
 cat > "$deskfile" <<-_EOF_
 	[Desktop Entry]
 	Version=1.0
-	Name=astah* community
+	Name=$appname
 	Comment=Lightweight, easy-to-use, and free UML2.x modeler
 	Comment[ja]=UMLの学習に最適な個人向けツールです
 	Exec=$(ppath "$exec") %F
