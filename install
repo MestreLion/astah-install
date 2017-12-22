@@ -185,7 +185,7 @@ install_icons() {
 
 usage() {
 	cat <<- USAGE
-	Usage: $myname [options]
+	Usage: $myname [options] [[-- |--archive=]FILE]
 	USAGE
 	if [[ "${1:-}" ]] ; then
 		cat >&2 <<- USAGE
@@ -218,6 +218,10 @@ usage() {
 	--appname=NAME
 	        Application name in menus [Default: $appname]
 
+	--archive=FILE
+	        the ZIP install archive downloaded from Astah website. If none
+	        is provided, it will download the latest compatible version.
+
 	Copyright (C) 2015 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
 	License: GPLv3 or later. See <http://www.gnu.org/licenses/gpl.html>
 	USAGE
@@ -247,7 +251,10 @@ while (( $# )); do
 	--appname=*	) appname="${1#*=}";;
 	--appname	) shift; appname="${1:-}";;
 
-	*) invalid "$1";;
+	--) shift; archive="${1:-}"; break;;
+	-*) invalid "$1";;
+	* ) [[ "$archive" ]] && invalid "$1"; archive="$1";;
+
 	esac
 	shift || :
 done
@@ -274,7 +281,11 @@ deskfile=$xdgdir/astah-community.desktop
 	printf "\n${appname^^} INSTALLER\n\n"
 	echo "Install details:"
 	echo "App name     = $appname"
+	if [[ "$archive" ]]; then
+	echo "Source       = $archive"
+	else
 	echo "Version      = $version"
+	fi
 	echo "Install dir  = $rootdir"
 	if ((yes)); then
 		confirm=YES
@@ -305,7 +316,7 @@ deskfile=$xdgdir/astah-community.desktop
 # Main procedures and logic ---------------------------------------------------
 
 mkdir -p "$rootdir"
-download_archive "$version" "zip"
+if [[ -z "$archive" ]]; then download_archive "$version" "zip"; fi
 unzip -quo -d "$rootdir" -- "$archive"
 
 
