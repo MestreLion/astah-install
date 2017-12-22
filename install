@@ -20,7 +20,6 @@
 # TODO:
 # - EULA
 # - Uninstall
-# - command-line exec
 
 # Default options -------------------------------------------------------------
 
@@ -29,6 +28,9 @@ appname='Astah* Community'
 
 # Install root path
 rootdir=$HOME/.local/opt/astah
+
+# Executable symlink full path
+symlink=${XDG_BIN_HOME:-$HOME/.local/bin}/astah
 
 # Archive version
 version=7.2
@@ -218,6 +220,12 @@ usage() {
 	--appname=NAME
 	        Application name in menus [Default: $appname]
 
+	--symlink=NAME
+	        Full path, including filename, to create a symlink to Astah's
+	        executable. It will only be created if parent directory exists,
+	        and it should preferably be in \$PATH.
+	        [Default: $symlink]
+
 	--archive=FILE
 	        the ZIP install archive downloaded from Astah website. If none
 	        is provided, it will download the latest compatible version.
@@ -251,6 +259,9 @@ while (( $# )); do
 	--appname=*	) appname="${1#*=}";;
 	--appname	) shift; appname="${1:-}";;
 
+	--symlink=*	) symlink="${1#*=}";;
+	--symlink	) shift; symlink="${1:-}";;
+
 	--) shift; archive="${1:-}"; break;;
 	-*) invalid "$1";;
 	* ) [[ "$archive" ]] && invalid "$1"; archive="$1";;
@@ -262,6 +273,7 @@ done
 [[ "$rootdir"  ]] || missing "--rootdir"
 [[ "$version"  ]] || missing "--version"
 [[ "$appname"  ]] || missing "--appname"
+[[ "$symlink"  ]] || missing "--symlink"
 
 
 # Derived vars ----------------------------------------------------------------
@@ -287,6 +299,7 @@ deskfile=$xdgdir/astah-community.desktop
 	echo "Version      = $version"
 	fi
 	echo "Install dir  = $rootdir"
+	echo "Executable   = $symlink"
 	if ((yes)); then
 		confirm=YES
 	else
@@ -320,6 +333,7 @@ if [[ -z "$archive" ]]; then download_archive "$version" "zip"; fi
 unzip -quo -d "$rootdir" -- "$archive"
 
 
+message "Creating executable at $exec"
 cat > "$exec" <<-_EOF_
 	#!/bin/sh
 
@@ -329,6 +343,10 @@ cat > "$exec" <<-_EOF_
 	java \$JAVA_OPTS -jar $(ppath "$dir/astah-community.jar") -- "\$@"
 _EOF_
 chmod +x "$exec"
+if [[ -d "$(dirname "$symlink")" ]] && ! [[ -e "$symlink" ]]; then
+	message "Creating executable symlink at $symlink"
+	ln -s -- "$exec" "$symlink" || fatal "could not create executable symlink"
+fi
 
 extract_icons "$icondir" "$xdgdir" "$dir"/astah.ico     'astah-community'
 extract_icons "$icondir" "$xdgdir" "$dir"/astah-doc.ico 'application-x-astah'
