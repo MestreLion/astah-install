@@ -70,6 +70,15 @@ exists()  { type "$1" >/dev/null 2>&1; }
 
 ppath()   { printf '%q' "$@"; }
 
+java_version() {
+	local ref=$1
+	local java=$(java -version 2>&1 | head -n1 | cut -d\" -f2)
+	local high=$(printf "%s\n" "$ref" "$java" | LC_ALL=C sort -V | tail -n1)
+	if [[ "$high" == "$ref" ]]; then
+		return 1
+	fi
+}
+
 download_archive() {
 	local requestedversion="$1"
 	local requestedtype="$2"
@@ -171,6 +180,11 @@ install_icons() {
 			--context "$context" --size "$size" "$icon" "$prefix"
 	done
 }
+
+if exists java && ! java_version 1.8; then
+	version=6.9  # latest version to support java 1.7
+fi
+
 
 # Derived vars ----------------------------------------------------------------
 
