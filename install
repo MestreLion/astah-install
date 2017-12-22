@@ -181,9 +181,76 @@ install_icons() {
 	done
 }
 
+usage() {
+	cat <<- USAGE
+	Usage: $myname [options]
+	USAGE
+	if [[ "${1:-}" ]] ; then
+		cat >&2 <<- USAGE
+		Try '$myname --help' for more information.
+		USAGE
+		exit 1
+	fi
+	cat <<-USAGE
+
+	An installer for Astah Community in Debian/Ubuntu/Mint
+
+	Download and extract original archive from developer website, verify its
+	md5sum integrity, and properly creates desktop file, icons, executable
+	and mime associations.
+
+	Tested with Astah Community 6.9, 7.0, 7.1 and 7.2
+
+	Options:
+	-h|--help  - show this page.
+	-q|--quiet - supress informative messages.
+
+	--rootdir=DIR
+	        Install directory [Default: $rootdir]
+
+	--version=VERSION
+	        Version to download. Astah Community 7.0 onwards require Java 8
+	        [Default for your system: $version]
+
+	--appname=NAME
+	        Application name in menus [Default: $appname]
+
+	Copyright (C) 2015 Rodrigo Silva (MestreLion) <linux@rodrigosilva.com>
+	License: GPLv3 or later. See <http://www.gnu.org/licenses/gpl.html>
+	USAGE
+	exit 0
+}
+
 if exists java && ! java_version 1.8; then
 	version=6.9  # latest version to support java 1.7
 fi
+
+
+# Command-line argument parsing   ---------------------------------------------
+
+for arg in "$@"; do case "$arg" in -h|--help) usage ;; esac; done
+while (( $# )); do
+	case "$1" in
+	-h|--help	) usage;;
+	-q|--quiet	) verbose=0;;
+
+	--rootdir=*	) rootdir="${1#*=}";;
+	--rootdir	) shift; rootdir="${1:-}";;
+
+	--version=*	) version="${1#*=}";;
+	--version	) shift; version="${1:-}";;
+
+	--appname=*	) appname="${1#*=}";;
+	--appname	) shift; appname="${1:-}";;
+
+	*) invalid "$1";;
+	esac
+	shift || :
+done
+
+[[ "$rootdir"  ]] || missing "--rootdir"
+[[ "$version"  ]] || missing "--version"
+[[ "$appname"  ]] || missing "--appname"
 
 
 # Derived vars ----------------------------------------------------------------
