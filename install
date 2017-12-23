@@ -340,12 +340,17 @@ cat > "$exec" <<-_EOF_
 	JAVA_OPTS="-Xms16m -Xmx384m"
 	#JAVA_OPTS="\$JAVA_OPTS -DrootLevel=DEBUG"
 
-	java \$JAVA_OPTS -jar $(ppath "$dir/astah-community.jar") -- "\$@"
+	jar=$(ppath "$dir/astah-community.jar")
+
+	java \$JAVA_OPTS -cp "\$jar" -jar "\$jar" -- "\$@"
 _EOF_
 chmod +x "$exec"
+
+
 if [[ -d "$(dirname "$symlink")" ]] && ! [[ -e "$symlink" ]]; then
 	message "Creating executable symlink at $symlink"
-	ln -s -- "$exec" "$symlink" || fatal "could not create executable symlink"
+	ln -s -- "$exec" "$symlink" ||
+		fatal "could not create executable symlink"
 fi
 
 extract_icons "$icondir" "$xdgdir" "$dir"/astah.ico     'astah-community'
